@@ -27,37 +27,6 @@ The staffing was already there. It just wasn't in the right intervals.
 
 AHT reduction is the lever leadership reaches for first. It delivers roughly a quarter of what redistribution achieves — at far greater organizational cost.
 
-## Executive Summary
-
-Many workforce plans look acceptable at the daily level but fail at the interval level. This creates a common operating trap: total staffing appears sufficient, while customers still experience poor service levels during peak intervals.
-
-The Decision Lab tests common operational responses and compares their impact:
-
-| Scenario | Description | Service Level Impact | Business Interpretation |
-|---|---|---:|---|
-| Baseline | Current staffing distribution | 0.0% | Starting point |
-| AHT Reduction | Reduce Average Handle Time | +5.1% | Helpful, but limited impact |
-| Shrinkage Reduction | Improve productive availability | +6.8% | Moderate improvement |
-| Add Headcount | Increase staffed capacity | +11.4% | Stronger impact, higher cost |
-| Schedule Redistribution | Move existing staffing into demand peaks | **+20.2%** | Highest-impact lever |
-| Combined Strategy | Apply multiple improvements | +24.6% | Best result, but more complex |
-
-## Business Recommendation
-
-Before approving additional hiring or launching costly AHT improvement initiatives, leaders should first evaluate interval-level schedule distribution.
-
-If total staffing is close to required staffing, schedule redistribution may produce greater service-level improvement than more expensive interventions.
-
-## Why This Matters
-
-A contact center can have the right number of people scheduled for the day and still miss service level throughout the day.
-
-The problem is often not the daily headcount total.
-
-The problem is the distribution of that headcount across the day.
-
-This project demonstrates how workforce analytics can move beyond reporting and support better operational decisions.
-
 ## Methodology
 
 The model uses interval-level workforce management logic:
