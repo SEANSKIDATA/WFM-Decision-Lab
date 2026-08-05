@@ -1,27 +1,31 @@
 # Workforce Management Decision Lab
 
-## Business Question
+## The finding that changes the budget conversation
 
-When service level declines, leadership often debates hiring, Average Handle Time reduction, overtime, coaching, or shrinkage reduction.
+Leadership's first instinct when service level drops: hire more people, or launch an AHT reduction program.
 
-But which operational lever actually moves service level the most?
+The data says neither is the highest-leverage move.
 
-This project models five common workforce management strategies against the same interval-level call center dataset to compare their operational impact.
+**Schedule redistribution — moving existing staff into the right intervals — improved service level by +20.2%.** Adding headcount delivered +8.1%. AHT reduction delivered +5.5%. Same dataset, same day, five levers tested head to head.
 
-## Key Finding
+The staffing was already there. It just wasn't in the right intervals.
 
-**Schedule redistribution improved service level by +20.2%.**
+![Lever Comparison](lever_comparison.png)
 
-That improvement was achieved with:
+---
 
-- No additional hiring
-- No Average Handle Time coaching initiative
-- No shrinkage reduction program
-- No new staffing budget
+## What the levers actually delivered
 
-The core issue was not total staffing volume.
+| Scenario | Service Level Impact | Business Interpretation |
+|---|---:|---|
+| Baseline | 0.0% | Starting point |
+| AHT Reduction | +5.5% | Helpful, but limited impact |
+| Shrinkage Reduction | +4.8% | Moderate improvement |
+| Add Headcount (+10%) | +8.1% | Stronger impact, higher cost |
+| **Schedule Redistribution** | **+20.2%** | **Highest-impact lever** |
+| Combined Strategy | +24.6% | Best result, more complex |
 
-**The staffing was already there. It just was not in the right intervals.**
+AHT reduction is the lever leadership reaches for first. It delivers roughly a quarter of what redistribution achieves — at far greater organizational cost.
 
 ## Executive Summary
 
@@ -82,19 +86,6 @@ WFM-Decision-Lab/
     └── lever_comparison.png
 ```
 
-## Skills Demonstrated
-
-- Workforce Management
-- Capacity Planning
-- Service Level Analysis
-- Erlang C Staffing Logic
-- Scenario Modeling
-- Operational Decision Support
-- Python
-- Pandas
-- Matplotlib
-- Executive Communication
-- Business Case Development
 
 ## How to Run
 
