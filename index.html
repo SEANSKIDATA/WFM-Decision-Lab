@@ -65,7 +65,7 @@ function agentsNeeded(A, targetSL, answerSec, aht, maxOcc) {
 // ── Intraday demand curve ──────────────────────────────────────
 // Realistic contact-center double-hump: morning peak, lunch dip, afternoon peak.
 // peakFactor 0 = perfectly flat; 1.0 = the standard double-hump; higher = sharper.
-// Shape is normalised so it always sums to 1 regardless of peakFactor.
+// Shape is normalized so it always sums to 1 regardless of peakFactor.
 const BASE_SHAPE = [
   0.35, 0.55, 0.78, 0.95, 1.00, 0.96, 0.88, 0.74,
   0.70, 0.78, 0.90, 0.97, 0.92, 0.78, 0.58, 0.36
@@ -289,19 +289,19 @@ function analyze(p) {
        redist, "No additional headcount assumed", "#22C55E", "#22C55E",
        `${totalAgentSlots} half-hour agent intervals (${(totalAgentSlots/2).toFixed(1)} productive agent-hours) — unchanged`),
     mk(`Add Headcount (+${pctS(headAdd)}%)`, "Increase scheduled FTEs",
-       head, "High cost", "#EF4444", "#3B82F6",
+       head, "Incremental payroll required", "#EF4444", "#3B82F6",
        `+${headSlots - totalAgentSlots} half-hour agent intervals added`),
     mk(`Reduce Shrinkage (−${pctS(shrCut)}pts)`, "Improve productive availability by reducing controllable shrinkage",
-       shr, "Medium cost", "#F59E0B", "#A78BFA",
+       shr, "Implementation effort varies", "#F59E0B", "#A78BFA",
        `+${shrSlots - totalAgentSlots} half-hour agent intervals released`),
     mk(`Reduce AHT (−${pctS(ahtCut)}%)`, "Coaching or process redesign to shorten calls",
-       ahtRes, "High cost", "#EF4444", "#FB923C",
+       ahtRes, "Operational investment may be required", "#EF4444", "#FB923C",
        `${aht}s → ${ahtNew.toFixed(0)}s per contact`),
   ].sort((a, b) => b.delta - a.delta).map((l, i) => ({ ...l, rank: i + 1 }));
 
   const combined = mk("Redistribution + Shrinkage Reduction",
     "Reshape the schedule and release additional productive hours together",
-    comb, "Medium cost", "#F59E0B", "#38BDF8", "two levers applied together");
+    comb, "Implementation effort varies", "#F59E0B", "#38BDF8", "two levers applied together");
 
   return { baselineSL: baseline.sl, levers, combined, reqFTEs, reqAgentsPer, baseAgents,
            redistAgents, calls, under, over, on, intervals, totalAgentSlots };
@@ -439,9 +439,9 @@ function App() {
           </div>
           <h1 style={{fontSize:28,fontWeight:700,letterSpacing:"-0.5px",marginBottom:8}}>Which lever actually moves your service level?</h1>
           <p style={{fontSize:12.5,color:"#64748B",maxWidth:660,lineHeight:1.6}}>
-            Four standalone WFM levers, modelled interval by interval with Erlang C across a simulated day.
+            Four standalone WFM levers, modeled interval by interval with Erlang C across a simulated day.
             Redistribution holds total productive agent-hours constant — it moves existing staff between
-            intervals rather than adding any. Every other lever is given the extra capacity it claims.
+            intervals rather than adding any. Each lever is applied independently at its stated magnitude.
           </p>
         </div>
       </div>
@@ -457,7 +457,7 @@ function App() {
             <Slider label="SHRINKAGE RATE" value={shrinkage} min={0.10} max={0.55} step={0.01}
               fmt={pct} onChange={setShrinkage} hint="Breaks, training, meetings, absence — example planning range 30–40%"/>
             <Slider label="SCHEDULED FTEs" value={scheduledFTEs} min={3} max={300} step={1}
-              fmt={function(v){return v+" FTEs";}} onChange={setFtes} hint="Total FTEs on the schedule for the modelled day"/>
+              fmt={function(v){return v+" FTEs";}} onChange={setFtes} hint="Total FTEs on the schedule for the modeled day"/>
             <Slider label="DEMAND PEAKINESS" value={peakFactor} min={0} max={2} step={0.1}
               fmt={function(v){return v===0?"flat day":v.toFixed(1)+"×";}} onChange={setPeak}
               hint="0 = perfectly flat demand · 1.0 = typical double-hump"/>
@@ -537,7 +537,7 @@ function App() {
             {collapsed && (
               <div style={{fontSize:11,color:"#FCA5A5",background:"#1A0505",border:"1px solid #7F1D1D",borderRadius:6,padding:"9px 12px",marginBottom:14,lineHeight:1.5}}>
                 <strong>Every lever reads ~0.0 pp because demand exceeds capacity in every interval.</strong>{" "}
-                With staffing this far below requirement the queue never stabilises, so incremental levers
+                With staffing this far below requirement the queue never stabilizes, so incremental levers
                 cannot move service level — this scenario needs materially more capacity, not reallocation.
                 Raise Scheduled FTEs toward the {r.reqFTEs} FTEs required to see the levers separate.
               </div>
@@ -562,7 +562,7 @@ function App() {
               <div style={{width:Math.min(100,(r.combined.delta/Math.max(maxDelta,r.combined.delta))*100)+"%",height:"100%",background:"#38BDF8",borderRadius:3,transition:"width .45s ease"}}/>
             </div>
             <div style={{fontSize:11,color:"#94A3B8",marginTop:10,lineHeight:1.5}}>
-              Reaches <strong style={{color:"#F1F5F9"}}>{pct(r.combined.sl)}</strong> modelled service level
+              Reaches <strong style={{color:"#F1F5F9"}}>{pct(r.combined.sl)}</strong> modeled service level
               {r.combined.sl>=slTarget ? " — clearing the "+pct(slTarget)+" target." : " — still short of the "+pct(slTarget)+" target."}
             </div>
           </div>
@@ -571,7 +571,7 @@ function App() {
             <div className="lbl" style={{marginBottom:12}}>COMPARISON</div>
             <table>
               <thead><tr style={{borderBottom:"1px solid #1E293B"}}>
-                {["#","Lever","SL Lift (pp)","Resulting SL","Cost"].map(function(h){
+                {["#","Lever","SL Lift (pp)","Resulting SL","Implementation consideration"].map(function(h){
                   return <th key={h} style={{textAlign:"left",padding:"5px 7px",color:"#334155",fontWeight:600,fontFamily:"'DM Mono',monospace",fontSize:9.5,letterSpacing:"1px"}}>{h}</th>;})}
               </tr></thead>
               <tbody>
@@ -593,7 +593,8 @@ function App() {
               call-weighted. Redistribution reshapes the schedule to the interval requirement curve while
               holding total productive agent-hours fixed, and is floored so no interval is stripped to feed
               the peaks. Scenario magnitudes are adjustable under Lever Settings and should not be interpreted as
-              equivalent levels of cost or effort.
+              equivalent levels of cost or effort. Implementation considerations are qualitative notes, not
+              model outputs — actual cost and difficulty depend on the operation.
               <div style={{marginTop:9}}>
                 <button onClick={function(){setAsm(!asm);}} style={{background:"none",border:"1px solid #1E293B",borderRadius:5,padding:"5px 10px",fontSize:9.5,color:"#475569",cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"1px"}}>
                   {asm?"▲ HIDE MODEL ASSUMPTIONS":"▼ MODEL ASSUMPTIONS"}
@@ -604,7 +605,7 @@ function App() {
                   Poisson call arrivals · exponential handle times · no abandonment (Erlang C, not A) ·
                   a single homogeneous agent skill · no transfers or retries · steady state within each
                   interval · all redistributed staffing assumed operationally movable · no shift-length,
-                  labour-rule, skill or break-placement constraints. Interval demand and the baseline
+                  labor-rule, skill or break-placement constraints. Interval demand and the baseline
                   schedule are both generated by the model, not imported from an actual forecast.
                 </div>
               )}
