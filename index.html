@@ -27,7 +27,7 @@
 <script type="text/babel">
 const { useState, useMemo } = React;
 
-/* ══════════ ENGINE — validated: 720 scenarios + 900 monotonicity checks, 0 failures ══════════ */
+/* ══════════ ENGINE — regression suite: tests/regression.test.js (run: node tests/regression.test.js) ══════════ */
 // ═══════════════════════════════════════════════════════════════
 // WFM Decision Lab — core engine v3
 // Interval-level. Redistribution conserves agent-hours.
@@ -302,23 +302,28 @@ function analyze(p) {
 
   // ── REGIME CLASSIFICATION ────────────────────────────────────────────────
   // Distribution-constrained and capacity-constrained are different problems
-  // with different owners and different cadences. The classifier runs two
-  // independent tests so the verdict is auditable rather than asserted:
+  // with different owners and different cadences. The classifier runs three
+  // tests so the verdict is auditable rather than asserted:
   //
   //   Test 1 (slot balance)  total productive slots vs the summed interval
   //                          requirement — can every interval be covered at all?
   //   Test 2 (reach)         does the best available reallocation of the
   //                          existing hours actually reach the SL target?
+  //   Test 3 (capacity ask)  if not, does reallocating first reduce the
+  //                          capacity request by at least ACTION_FTE?
   //
-  // Test 2 is the binding one, because aggregate SL is call-weighted: an
+  // Test 2 is binding over Test 1, because aggregate SL is call-weighted: an
   // operation can miss the per-interval requirement in quiet intervals and
   // still clear target overall.
   const redistDelta = redist.sl - baseline.sl;
   const slotBalance = totalAgentSlots - reqAgentTotal;
-  // Materiality rule — a configurable decision policy, NOT an Erlang C result.
-  // If reallocation cannot reach target but recovers at least this much SL,
-  // the constraint is classified as Mixed rather than Capacity.
-  const MATERIAL = 0.02;
+  // Action threshold — a decision policy, NOT an Erlang C result.
+  // If reallocation cannot reach target but reduces the capacity request by at
+  // least this many FTE, the constraint is classified as Mixed rather than
+  // Capacity. Replaces the earlier 2.0 pp service-level rule, which measured
+  // reallocation at current staffing and misclassified 507 of 695 in-scope
+  // scenarios (see analysis/ and CHANGELOG.md). Asks are searched in whole FTE.
+  const ACTION_FTE = 1;
 
   // Residual requirement AFTER redistribution — the capacity you actually
   // still need once the schedule is placed correctly. This is the number that
@@ -364,11 +369,11 @@ function analyze(p) {
       detail: "This is a scheduling problem, not a capacity problem. Adding headcount would also work, and would cost money to do what reallocation does for free.",
       decision: "Fix the placement. No capacity request is justified by this data."
     };
-  } else if (redistDelta >= MATERIAL) {
+  } else if (naiveFTEs - residualFTEs >= ACTION_FTE) {
     regime = {
       key: "mixed", label: "Mixed — sequence matters", tag: "MIXED — SEQUENCE MATTERS",
       owner: "Scheduling first, then Capacity Planning", cadence: "Weekly cycle, then budget cycle",
-      headline: "Reallocation materially improves the shortfall but cannot close it alone.",
+      headline: "Reallocation reduces the capacity request but cannot close the gap alone.",
       detail: "Both levers are needed. The order changes what the capacity request costs.",
       decision: "Redistribute first, then size the capacity request against the corrected schedule."
     };
@@ -376,7 +381,7 @@ function analyze(p) {
     regime = {
       key: "capacity", label: "Capacity-constrained", tag: "CAPACITY-CONSTRAINED",
       owner: "Capacity Planning", cadence: "Budget / hiring cycle",
-      headline: "No reallocation of the current hours closes this gap.",
+      headline: "Reallocation does not reduce the capacity request.",
       detail: "The schedule is already close to the best distribution available for this demand shape. The shortfall is aggregate.",
       decision: "Rank capacity levers first. Reallocation is not the constraint here."
     };
@@ -389,7 +394,7 @@ function analyze(p) {
   regime.residualFTEs = residualFTEs;
   regime.naiveFTEs = naiveFTEs;
   regime.askSaving = Math.max(0, naiveFTEs - residualFTEs);
-  regime.materialityPct = MATERIAL * 100;
+  regime.actionFTE = ACTION_FTE;
 
   const combined = mk("Redistribution + Shrinkage Reduction",
     "Reshape the schedule and release additional productive hours together",
@@ -577,14 +582,18 @@ function WhyPanel({regime, redistSL, slTarget, open, toggle}) {
                      : "It does not reach. Placement alone cannot close this."}
           </div>
           <div style={{fontSize:11,color:"#94A3B8",lineHeight:1.6,marginBottom:9,paddingTop:9,borderTop:"1px solid #1E293B"}}>
-            <strong style={{color:"#CBD5E1"}}>Materiality rule.</strong> If reallocation cannot reach target but
-            recovers at least <strong style={{color:"#F1F5F9"}}>{regime.materialityPct.toFixed(1)} percentage points</strong>,
-            the model classifies the constraint as Mixed. Below that, it classifies it as Capacity. This threshold is a
-            configurable decision rule, not an Erlang C result.
+            <strong style={{color:"#CBD5E1"}}>Test 3 — capacity ask.</strong> Hitting target on the current schedule needs{" "}
+            <strong style={{color:"#F1F5F9"}}>+{regime.naiveFTEs} FTE</strong>; on a correctly placed schedule,{" "}
+            <strong style={{color:"#F1F5F9"}}>+{regime.residualFTEs} FTE</strong>. If reallocation cannot reach target but
+            reduces the request by at least <strong style={{color:"#F1F5F9"}}>{regime.actionFTE} FTE</strong>, the model
+            classifies the constraint as Mixed; otherwise Capacity. The {regime.actionFTE}-FTE action threshold is a
+            decision rule, not an Erlang C result. Requests are searched in whole FTE.
           </div>
           <div style={{fontSize:10.5,color:"#475569",borderTop:"1px solid #1E293B",paddingTop:9}}>
-            Test 2 is the binding one. Aggregate service level is call-weighted, so an operation can miss the
-            per-interval requirement during quiet intervals and still clear target overall.
+            Test 2 overrides Test 1: aggregate service level is call-weighted, so an operation can miss the
+            per-interval requirement during quiet intervals and still clear target overall. Test 3 separates
+            Mixed from Capacity by what reallocation does to the capacity request, measured at the staffing
+            level the decision is about rather than at current staffing.
           </div>
         </div>
       )}

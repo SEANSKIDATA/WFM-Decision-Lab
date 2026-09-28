@@ -36,20 +36,28 @@ The model classifies into one of four regimes before it recommends anything:
 |---|---|---|---|
 | **Target met** | Baseline already clears the target | No action indicated | Monitor |
 | **Distribution-constrained** | Reallocation alone reaches the target | Scheduling | Weekly / intraday |
-| **Mixed** | Reallocation helps materially but can't close it | Scheduling, then Capacity Planning | Weekly, then budget |
-| **Capacity-constrained** | Reallocation changes almost nothing | Capacity Planning | Budget / hiring |
+| **Mixed** | Reallocation can't reach target, but reduces the capacity request by ≥1 FTE | Scheduling, then Capacity Planning | Weekly, then budget |
+| **Capacity-constrained** | Reallocation doesn't reduce the capacity request | Capacity Planning | Budget / hiring |
 
-The classification runs two explicit tests, both shown in the tool:
+The classification runs three explicit tests, all shown in the tool:
 
 1. **Slot balance** — total productive half-hour slots against the summed interval requirement.
 2. **Reach** — whether the best available reallocation of those same hours actually hits the target.
+3. **Capacity ask** — if it doesn't, whether reallocating first reduces the capacity request.
 
-Test 2 is the binding one, because aggregate service level is call-weighted: an operation can
+Test 2 overrides Test 1, because aggregate service level is call-weighted: an operation can
 miss the per-interval requirement during quiet intervals and still clear target overall.
 
-> **Materiality rule.** If reallocation cannot reach target but recovers at least **2.0 percentage
-> points**, the constraint is classified as Mixed rather than Capacity. That threshold is a
-> configurable decision rule, not an Erlang C result.
+> **Action threshold.** If reallocation cannot reach target but reduces the capacity request by
+> at least **1 FTE**, the constraint is classified as Mixed rather than Capacity. Requests are
+> searched in whole FTE. That threshold is a decision rule, not an Erlang C result.
+>
+> It replaces an earlier rule that classified Mixed when reallocation recovered at least 2.0
+> percentage points of service level. That rule measured reallocation at *current* staffing,
+> where a collapsed queue shows almost no gain, even when reallocating a larger pool would cut
+> the hiring request. Across the 695 scenarios where the distinction applies, the two rules
+> disagreed in 514; in 507 of them the old rule called Capacity where reallocation reduced the
+> request. See [`CHANGELOG.md`](CHANGELOG.md) and [`analysis/`](analysis/).
 
 ---
 
@@ -59,7 +67,7 @@ This is the output the diagnosis makes possible. Most capacity requests are size
 current schedule. If that schedule has hours in the wrong intervals, the request inherits the
 error and asks for capacity that is already funded.
 
-Modeled 70-FTE operation, demand peakiness 1.3:
+Modeled 70-FTE operation · 4,000 calls · 300s AHT · 34% shrinkage · demand peakiness 1.3:
 
 | | FTEs |
 |---|---:|
@@ -104,6 +112,39 @@ It adds no capacity; it moves existing capacity between intervals.
 
 ---
 
+## What's established
+
+**Deployed** (live tool, covered by `tests/`): interval-level Erlang C across 16 half-hour
+intervals · four-regime diagnosis using the 1-FTE capacity-ask test · capacity request sized
+against the corrected schedule · redistribution that holds productive agent-hours constant.
+
+**Established** (reproducible from this repository): the default and 70-FTE scenarios above ·
+flat demand returns exactly +0.0 pp · across 695 in-scope scenarios, the former 2.0 pp rule and
+the FTE rule disagree in 514, 507 of them in one direction · at 0.1 FTE resolution the split is
+519 / 0 · 37 scenarios (5.3%) save more than 0 but less than 1 FTE, all at 8, 12 or 19 FTE.
+
+**Experimental** (analysis only, not in the live tool): fractional-FTE measurement and
+separate action thresholds. A fixed threshold penalizes small operations (22-point spread
+across operation sizes at 2 FTE). A proportional threshold mostly removes that at 5% (4-point
+spread) but reverses it at 10%. Neither a universal FTE threshold nor a universal percentage
+fully represents operational actionability.
+
+A second, load-matched sweep (`analysis/sweep_scale.js`: call volume scaled so every size
+carries the same utilization, 8 to 500 FTE, 1,215 scenarios, 781 in scope) found that savings
+do not compress into a percentage band at larger sizes. The median saving rises from 20% of
+the operation at 8 FTE to 32% at 500 FTE, and the middle half stays 23 to 26 points wide.
+Small operations do sit on a different curve: Erlang C safety staffing makes their interval
+requirement about 7% flatter than their demand curve at 8 FTE, converging by 70 to 100 FTE
+(`analysis/sweep_scale_mechanism.js`). Share classified Mixed, 8 → 500 FTE: fixed 1 FTE
+64% → 100%; proportional 5% 83% → 100% (stops discriminating from 100 FTE); proportional 10%
+69–80% at every size. The 10% threshold tilted the other way on the fixed-volume grid, so a
+threshold's size bias depends on which operations it is tested against.
+
+**Open questions:** what threshold operators actually act on, and whether it depends on
+operation size, the cost of a schedule change, planning horizon, or who owns the decision.
+
+---
+
 ## Where the finding breaks
 
 A model that always favors its own headline lever is less useful, not more. Two disclosures:
@@ -112,26 +153,14 @@ A model that always favors its own headline lever is less useful, not more. Two 
 nothing, because a flat day has nothing to redistribute. The regime correctly flips to
 capacity-constrained.
 
-**Redistribution beats a 10% headcount add in 38% of scenarios**, not all of them. Across a sweep
-of scenarios that miss target, it wins 44 of 116. The finding is not "redistribution beats
-hiring." It is: diagnose the interval problem before assuming the answer is more headcount.
+**Redistribution beats a 10% headcount add in a minority of scenarios.** Across the 1,470-scenario
+grid, 770 miss target. In 379 of those the queue is so far over capacity that neither lever moves
+service level by 0.1 pp. Of the remaining 391, redistribution beats the headcount add in 103
+(26%), and never on flat or near-flat demand (peakiness 0 and 0.4). The finding is not
+"redistribution beats hiring." It is: diagnose the interval problem before assuming the answer
+is more headcount, and size any hiring request against a corrected schedule.
 
 The lever magnitudes are adjustable sliders specifically so the ranking can be broken.
-
----
-
-## Two models in this repository
-
-| | Python notebook (`decision_lab.py`) | Interactive tool (`index.html`) |
-|---|---|---|
-| Demand | Fixed sample interval dataset | Simulated curve from a peakiness setting |
-| Schedule | Fixed baseline in the dataset | Evenly distributed baseline |
-| Inputs | Set in code | Adjustable by the user |
-| Output | A documented case study | Regime diagnosis and sequenced levers |
-
-Both use Erlang C at the interval level and demonstrate the same diagnostic principle, but the
-magnitudes differ because the demand pattern and baseline schedule differ. Neither analyzes an
-organization's real forecast.
 
 ---
 
@@ -176,21 +205,43 @@ place of the generated demand curve.
 ```
 WFM-Decision-Lab/
 ├── README.md
-├── index.html                    interactive model (GitHub Pages)
-├── decision_lab.py               Python case-study model
+├── CHANGELOG.md
+├── index.html                    interactive model and engine (GitHub Pages)
 ├── methodology.md                full methodology
-├── requirements.txt
-├── sample_interval_data.csv
-├── lever_comparison.png
+├── tests/
+│   ├── regression.test.js        regression suite, runs against index.html
+│   ├── load_engine.js            extracts the engine from index.html
+│   └── grid.js                   the 1,470-scenario grid
+├── analysis/
+│   ├── sweep_resolution.js       old 2.0 pp rule vs FTE rule, by measurement resolution
+│   ├── sweep_thresholds.js       fixed vs proportional action thresholds (experimental)
+│   ├── sweep_levers.js           redistribution vs a 10% headcount add
+│   ├── sweep_scale.js            load-matched sweep, 8 to 500 FTE (experimental)
+│   ├── sweep_scale_mechanism.js  how much Erlang C flattens the requirement curve, by size
+│   ├── saving.js                 capacity-request saving at a chosen FTE resolution
+│   └── results/                  CSV outputs of the sweeps
 └── wfm-decision-lab-hero.png
 ```
 
-## Running the Python model
+## Reproducing every number
+
+Requires Node 18+. No dependencies, no install.
 
 ```bash
-pip install -r requirements.txt
-python decision_lab.py
+node tests/regression.test.js      # ~10,000 checks: fixtures, regime counts, invariants, monotonicity
+node analysis/sweep_levers.js
+node analysis/sweep_thresholds.js  # ~1–2 min
+node analysis/sweep_resolution.js  # ~3–5 min
+node analysis/sweep_scale.js       # a few seconds
+node analysis/sweep_scale_mechanism.js
 ```
+
+The tests load the engine straight from `index.html`, so they always check the deployed code.
+They assert the default and 70-FTE scenarios above, the regime counts across the grid (700
+target met · 75 distribution · 559 mixed · 136 capacity), that redistribution conserves
+agent-hours and never scores below the baseline schedule, that every regime satisfies its own
+test, and that adding staff never lowers service level while adding volume or handle time never
+raises it.
 
 ---
 
