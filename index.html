@@ -425,7 +425,7 @@ function analyze(p) {
     ];
   } else if (regime.key === "mixed") {
     groups = [
-      { key: "step1", title: "Step 1 — reallocate first", note: "Costs no additional headcount and shrinks the capacity request that follows.", levers: rerank(redistLever) },
+      { key: "step1", title: "Step 1 — reallocate first", note: "Adds no headcount and shrinks the modeled capacity request that follows.", levers: rerank(redistLever) },
       { key: "step2", title: "Step 2 — capacity options", note: "Ranked by modeled impact, sized against the corrected schedule.", levers: rerank(capacityLevers) },
     ];
   } else {
@@ -543,7 +543,7 @@ function RegimeBanner({regime, baselineSL, redistSL, slTarget, under, over, on, 
         <Stat label="DELIVERED SL" value={pct(baselineSL)} color={baselineSL>=slTarget?"#22C55E":"#EF4444"}/>
         <Stat label="AFTER REALLOCATION" value={pct(redistSL)} color={redistSL>=slTarget?"#22C55E":st.accent}/>
         <Stat label="TARGET" value={pct(slTarget)}/>
-        <Stat label="SLOT BALANCE" value={(sb>=0?"+":"")+sb} color={sb>=0?"#22C55E":"#EF4444"}/>
+        <Stat label="SLOTS VS NEED" value={(sb>=0?"+":"")+sb} color={sb>=0?"#22C55E":"#EF4444"}/>
         <Stat label="INTERVALS UNDER" value={under+" / "+intervals} color={under>0?"#EF4444":"#22C55E"}/>
       </div>
 
@@ -614,7 +614,7 @@ function BudgetPanel({regime, scheduledFTEs}) {
       </div>
       <div style={{fontSize:11.5,color:"#94A3B8",lineHeight:1.6}}>
         {saving>0
-          ? <>Sizing the request against the current schedule asks for <strong style={{color:"#FCA5A5"}}>{regime.naiveFTEs} FTE</strong>. Sizing it against a correctly placed schedule asks for <strong style={{color:"#86EFAC"}}>{regime.residualFTEs>0?regime.residualFTEs+" FTE":"nothing"}</strong>. The difference — <strong style={{color:"#F1F5F9"}}>{saving} FTE</strong> — is capacity you are already paying for and not using.</>
+          ? <>Sizing the request against the current schedule asks for <strong style={{color:"#FCA5A5"}}>{regime.naiveFTEs} FTE</strong>. Sizing it against a correctly placed schedule asks for <strong style={{color:"#86EFAC"}}>{regime.residualFTEs>0?regime.residualFTEs+" FTE":"nothing"}</strong>. The difference — <strong style={{color:"#F1F5F9"}}>{saving} FTE</strong> — is capacity requested only because current hours sit in the wrong intervals.</>
           : <>Fixing placement does not reduce the request here. The shortfall is genuinely aggregate.</>}
       </div>
     </div>
